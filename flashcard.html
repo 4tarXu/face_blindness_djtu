@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学生照片抽认卡</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            width: 100%;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .progress {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .card-area {
+            padding: 40px;
+            text-align: center;
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .photo-container {
+            width: 300px;
+            height: 300px;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 0 auto 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .photo {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            display: block;
+            margin: auto;
+        }
+
+        .student-name {
+            font-size: 32px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+        }
+
+        .student-name.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 15px;
+            padding: 40px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .upload-text {
+            color: #666;
+            font-size: 18px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            color: #666;
+            font-size: 18px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .keyboard-hint {
+            margin-top: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+
+            .header {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .card-area {
+                padding: 20px;
+            }
+
+            .photo-container {
+                width: 250px;
+                height: 250px;
+            }
+
+            .student-name {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📚 学生照片抽认卡</h1>
+            <div class="progress" id="progress">加载中...</div>
+        </div>
+
+        <div class="card-area">
+            <div id="uploadSection" class="upload-area" onclick="document.getElementById('fileInput').click()">
+                <div class="upload-text">
+                    📁 点击上传照片文件夹<br>
+                    <small>选择包含学生照片的文件夹</small>
+                </div>
+            </div>
+
+            <div id="cardSection" style="display: none;">
+                <div class="photo-container">
+                    <img id="photo" class="photo" src="" alt="学生照片" style="display: none;">
+                </div>
+                <div id="studentName" class="student-name"></div>
+                
+                <div class="controls">
+                    <button class="btn btn-secondary" onclick="prevPhoto()">⬅ 上一张</button>
+                    <button class="btn btn-primary" onclick="showName()">👀 显示姓名</button>
+                    <button class="btn btn-primary" onclick="nextPhoto()">下一张 ➡</button>
+                    <button class="btn btn-secondary" onclick="randomPhoto()">🎲 随机</button>
+                </div>
+
+                <div class="keyboard-hint">
+                    快捷键：← → 方向键切换，空格键显示姓名，R键随机
+                </div>
+            </div>
+
+            <div id="loading" class="loading">
+                正在加载照片...
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="fileInput" webkitdirectory directory multiple style="display: none;">
+
+    <script>
+        let photos = [];
+        let currentIndex = 0;
+        let currentPhoto = null;
+
+        // 初始化
+        document.getElementById('fileInput').addEventListener('change', handleFileSelect);
+        document.addEventListener('keydown', handleKeyPress);
+
+        // 尝试自动加载本地照片
+        window.addEventListener('load', () => {
+            // 检查是否有本地照片
+            checkLocalPhotos();
+        });
+
+        function checkLocalPhotos() {
+            // 模拟检查本地student_photos目录
+            // 实际应用中，这需要服务器支持或用户上传
+            setTimeout(() => {
+                document.getElementById('progress').textContent = '请选择照片文件夹开始';
+            }, 1000);
+        }
+
+        function handleFileSelect(event) {
+            const files = Array.from(event.target.files);
+            const photoFiles = files.filter(file => 
+                file.type.startsWith('image/') && 
+                !file.name.startsWith('.')
+            );
+
+            if (photoFiles.length === 0) {
+                alert('未找到照片文件！');
+                return;
+            }
+
+            loadPhotos(photoFiles);
+        }
+
+        function loadPhotos(photoFiles) {
+            photos = [];
+            currentIndex = 0;
+
+            // 显示加载状态
+            document.getElementById('uploadSection').style.display = 'none';
+            document.getElementById('cardSection').style.display = 'none';
+            document.getElementById('loading').classList.add('show');
+
+            let loadedCount = 0;
+            
+            photoFiles.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    photos.push({
+                        name: file.name.replace(/\.[^/.]+$/, ""), // 移除扩展名
+                        src: e.target.result,
+                        file: file
+                    });
+                    loadedCount++;
+
+                    if (loadedCount === photoFiles.length) {
+                        photos.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
+                        showCardSection();
+                        showPhoto(0);
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function showCardSection() {
+            document.getElementById('loading').classList.remove('show');
+            document.getElementById('cardSection').style.display = 'block';
+            updateProgress();
+        }
+
+        function showPhoto(index) {
+            if (photos.length === 0) return;
+            
+            currentPhoto = photos[index];
+            const photo = document.getElementById('photo');
+            const studentName = document.getElementById('studentName');
+
+            photo.src = currentPhoto.src;
+            photo.style.display = 'block';
+            studentName.textContent = '';
+            studentName.classList.remove('show');
+            
+            currentIndex = index;
+            updateProgress();
+        }
+
+        function showName() {
+            const studentName = document.getElementById('studentName');
+            studentName.textContent = currentPhoto.name;
+            studentName.classList.add('show');
+        }
+
+        function nextPhoto() {
+            if (photos.length === 0) return;
+            const nextIndex = (currentIndex + 1) % photos.length;
+            showPhoto(nextIndex);
+        }
+
+        function prevPhoto() {
+            if (photos.length === 0) return;
+            const prevIndex = (currentIndex - 1 + photos.length) % photos.length;
+            showPhoto(prevIndex);
+        }
+
+        function randomPhoto() {
+            if (photos.length === 0) return;
+            let randomIndex;
+            do {
+                randomIndex = Math.floor(Math.random() * photos.length);
+            } while (randomIndex === currentIndex && photos.length > 1);
+            showPhoto(randomIndex);
+        }
+
+        function updateProgress() {
+            if (photos.length > 0) {
+                document.getElementById('progress').textContent = 
+                    `${currentIndex + 1} / ${photos.length}`;
+            }
+        }
+
+        function handleKeyPress(event) {
+            if (photos.length === 0) return;
+
+            switch(event.key) {
+                case 'ArrowLeft':
+                    prevPhoto();
+                    break;
+                case 'ArrowRight':
+                    nextPhoto();
+                    break;
+                case ' ':
+                    event.preventDefault();
+                    showName();
+                    break;
+                case 'r':
+                case 'R':
+                    randomPhoto();
+                    break;
+            }
+        }
+
+        // 拖拽支持
+        document.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            document.getElementById('uploadSection').style.borderColor = '#667eea';
+        });
+
+        document.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            document.getElementById('uploadSection').style.borderColor = '#ccc';
+        });
+
+        document.addEventListener('drop', (e) => {
+            e.preventDefault();
+            document.getElementById('uploadSection').style.borderColor = '#ccc';
+            
+            const files = Array.from(e.dataTransfer.files);
+            const photoFiles = files.filter(file => 
+                file.type.startsWith('image/') && 
+                !file.name.startsWith('.')
+            );
+
+            if (photoFiles.length > 0) {
+                loadPhotos(photoFiles);
+            }
+        });
+
+        // 添加示例数据（用于演示）
+        function addSampleData() {
+            const sampleNames = ['张三', '李四', '王五', '赵六', '陈七'];
+            photos = sampleNames.map((name, index) => ({
+                name: name,
+                src: `data:image/svg+xml;base64,${btoa(`
+                    <svg width="300" height="300" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="300" height="300" fill="#667eea"/>
+                        <text x="150" y="150" text-anchor="middle" dominant-baseline="middle" 
+                              fill="white" font-size="24" font-family="Arial">${name}</text>
+                        <text x="150" y="200" text-anchor="middle" dominant-baseline="middle" 
+                              fill="white" font-size="14" font-family="Arial">示例照片</text>
+                    </svg>
+                `)}`,
+                file: null
+            }));
+            showCardSection();
+            showPhoto(0);
+        }
+
+        // 在页面加载后显示提示
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                if (photos.length === 0) {
+                    document.querySelector('.upload-text').innerHTML = `
+                        📁 点击或拖拽上传照片文件夹<br>
+                        <small>选择包含学生照片的文件夹</small><br>
+                        <button onclick="addSampleData()" style="margin-top: 10px; padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 15px; cursor: pointer;">🎲 使用示例数据</button>
+                    `;
+                }
+            }, 2000);
+        });
+    </script>
+</body>
+</html>
