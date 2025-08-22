@@ -21,6 +21,74 @@
             padding: 20px;
         }
 
+        /* 烟花效果 */
+        .firework {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: firework-animation 1.5s ease-out forwards;
+            pointer-events: none;
+            box-shadow: 0 0 6px currentColor, 0 0 12px currentColor;
+        }
+
+        @keyframes firework-animation {
+            0% {
+                transform: translate(0, 0) scale(1);
+                opacity: 1;
+            }
+            50% {
+                opacity: 1;
+            }
+            100% {
+                transform: translate(var(--x), var(--y)) scale(1.5);
+                opacity: 0;
+            }
+        }
+
+        .firework-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 1000;
+            overflow: hidden;
+        }
+
+        /* 连击提示 */
+        .combo-display {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #ff6b6b, #feca57);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 50px;
+            font-size: 24px;
+            font-weight: bold;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            z-index: 2000;
+            animation: combo-popup 2s ease-out forwards;
+            pointer-events: none;
+        }
+
+        @keyframes combo-popup {
+            0% {
+                transform: scale(0) rotate(-10deg);
+                opacity: 0;
+            }
+            20% {
+                transform: scale(1.2) rotate(5deg);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1) rotate(0deg);
+                opacity: 0;
+            }
+        }
+
         .container {
             background: white;
             border-radius: 20px;
@@ -56,6 +124,7 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
+            width: 100%;
         }
 
         .photo-container {
@@ -186,6 +255,7 @@
             .photo-container {
                 width: 250px;
                 height: 250px;
+                margin: 0 auto 20px;
             }
 
             .student-name {
@@ -195,6 +265,8 @@
     </style>
 </head>
 <body>
+    <div class="firework-container" id="fireworkContainer"></div>
+    
     <div class="container">
         <div class="header">
             <h1>📚 学生照片抽认卡</h1>
@@ -216,14 +288,25 @@
                 <div id="studentName" class="student-name"></div>
                 
                 <div class="controls">
-                    <button class="btn btn-secondary" onclick="prevPhoto()">⬅ 上一张</button>
-                    <button class="btn btn-primary" onclick="showName()">👀 显示姓名</button>
-                    <button class="btn btn-primary" onclick="nextPhoto()">下一张 ➡</button>
-                    <button class="btn btn-secondary" onclick="randomPhoto()">🎲 随机</button>
+                    <div style="margin-bottom: 10px;">
+                        <button class="btn btn-primary" onclick="prevPhoto()">⬅ 上一张</button>
+                        <button class="btn btn-primary" onclick="nextPhoto()">➡ 下一张</button>
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <button class="btn btn-primary" onclick="showName()">👀 显示答案</button>
+                    </div>
+                </div>
+
+                <div class="name-checker" style="margin-top: 20px;">
+                    <input type="text" id="nameInput" placeholder="请输入学生姓名..." 
+                           style="padding: 10px; border: 1px solid #ddd; border-radius: 20px; width: 200px; text-align: center; font-size: 16px;"
+                           onkeypress="handleNameInput(event)">
+                    <div id="nameResult" style="margin-top: 10px; font-size: 14px; min-height: 20px;"></div>
                 </div>
 
                 <div class="keyboard-hint">
-                    快捷键：← → 方向键切换，空格键显示姓名，R键随机
+                    快捷键：← → 方向键切换，Tab键随机，Enter键验证姓名<br>
+                    <small>输入姓名时不会触发快捷键，可以多次尝试</small>
                 </div>
             </div>
 
@@ -322,6 +405,9 @@
             studentName.textContent = '';
             studentName.classList.remove('show');
             
+            // 清空姓名输入框和结果
+            clearNameInput();
+            
             currentIndex = index;
             updateProgress();
         }
@@ -330,18 +416,22 @@
             const studentName = document.getElementById('studentName');
             studentName.textContent = currentPhoto.name;
             studentName.classList.add('show');
+            resetCombo(); // 显示答案时清空连击次数
+            hasShownAnswer = true; // 标记当前题目已显示过答案
         }
 
         function nextPhoto() {
             if (photos.length === 0) return;
             const nextIndex = (currentIndex + 1) % photos.length;
             showPhoto(nextIndex);
+            hasShownAnswer = false; // 切换照片时重置显示答案标记
         }
 
         function prevPhoto() {
             if (photos.length === 0) return;
             const prevIndex = (currentIndex - 1 + photos.length) % photos.length;
             showPhoto(prevIndex);
+            hasShownAnswer = false; // 切换照片时重置显示答案标记
         }
 
         function randomPhoto() {
@@ -363,6 +453,24 @@
         function handleKeyPress(event) {
             if (photos.length === 0) return;
 
+            // 如果正在输入，不触发快捷键
+            if (event.target.tagName === 'INPUT') {
+                // 只在输入框中处理Enter键用于验证
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    
+                    // 如果等待进入下一张，直接切换
+                    if (window.waitingForNext) {
+                        nextPhoto();
+                        window.waitingForNext = false;
+                    } else {
+                        // 否则进行验证
+                        checkName();
+                    }
+                }
+                return;
+            }
+
             switch(event.key) {
                 case 'ArrowLeft':
                     prevPhoto();
@@ -370,15 +478,150 @@
                 case 'ArrowRight':
                     nextPhoto();
                     break;
-                case ' ':
+                case 'Tab':
                     event.preventDefault();
-                    showName();
-                    break;
-                case 'r':
-                case 'R':
                     randomPhoto();
                     break;
+                case 'Enter':
+                    event.preventDefault();
+                    checkName();
+                    break;
             }
+        }
+
+        function handleNameInput(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                checkName();
+            }
+        }
+
+        function checkName() {
+            if (!currentPhoto) return;
+
+            const input = document.getElementById('nameInput');
+            const result = document.getElementById('nameResult');
+            const userInput = input.value.trim();
+            const correctName = currentPhoto.name;
+
+            if (!userInput) {
+                result.innerHTML = '<span style="color: #ff9800;">请输入学生姓名</span>';
+                return;
+            }
+
+            if (userInput === correctName) {
+                if (!hasShownAnswer) {
+                    comboCount++; // 只有在未显示答案时才增加连击
+                }
+                result.innerHTML = `<span style="color: #4caf50; font-weight: bold;">✅ 正确！按回车继续下一张 ${comboCount > 1 ? `(连击${comboCount}次)` : ''}</span>`;
+                window.waitingForNext = true;
+                
+                // 触发烟花庆祝效果和连击提示
+                triggerFireworks();
+                if (!hasShownAnswer) {
+                    showCombo(); // 只有在未显示答案时才显示连击提示
+                }
+            } else {
+                result.innerHTML = '<span style="color: #f44336; font-weight: bold;">❌ 错误！再试一次</span>';
+                window.waitingForNext = false;
+                resetCombo(); // 答错重置连击
+                input.select(); // 选中输入框内容，方便重新输入
+            }
+        }
+
+        function clearNameInput() {
+            document.getElementById('nameInput').value = '';
+            document.getElementById('nameResult').innerHTML = '';
+            window.waitingForNext = false;
+        }
+
+        // 连击功能
+        let comboCount = 0;
+        let hasShownAnswer = false; // 标记当前题目是否已显示过答案
+
+        function showCombo() {
+            if (comboCount > 1) {
+                const comboDiv = document.createElement('div');
+                comboDiv.className = 'combo-display';
+                
+                if (comboCount === photos.length) {
+                    comboDiv.textContent = '全部答对！！！';
+                    comboDiv.style.background = 'linear-gradient(135deg, #ff6b6b, #ffd93d)';
+                    comboDiv.style.animation = 'combo-popup 3s ease-out forwards';
+                } else {
+                    comboDiv.textContent = `连击${comboCount}次！`;
+                }
+                
+                document.body.appendChild(comboDiv);
+                
+                setTimeout(() => {
+                    comboDiv.remove();
+                }, comboCount === photos.length ? 3000 : 2000);
+            }
+        }
+
+        function resetCombo() {
+            comboCount = 0;
+        }
+
+        // 烟花效果
+        function createFirework(x, y, particleCount = 50, radius = 200) {
+            const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ff8800', '#8800ff', '#ff4444', '#44ff44', '#4444ff'];
+            const fireworkContainer = document.getElementById('fireworkContainer');
+            
+            for (let i = 0; i < particleCount; i++) {
+                const firework = document.createElement('div');
+                firework.className = 'firework';
+                firework.style.left = x + 'px';
+                firework.style.top = y + 'px';
+                firework.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                
+                const angle = (Math.PI * 2 * i) / particleCount + Math.random() * 0.3;
+                const velocity = radius * 0.5 + Math.random() * radius;
+                const xVel = Math.cos(angle) * velocity;
+                const yVel = Math.sin(angle) * velocity;
+                
+                firework.style.setProperty('--x', xVel + 'px');
+                firework.style.setProperty('--y', yVel + 'px');
+                
+                fireworkContainer.appendChild(firework);
+                
+                setTimeout(() => {
+                    firework.remove();
+                }, 1500);
+            }
+        }
+
+        function triggerFireworks() {
+            const screenWidth = window.innerWidth;
+            const screenHeight = window.innerHeight;
+            
+            // 创建多个烟花点位，覆盖全屏
+            const positions = [
+                { x: screenWidth * 0.2, y: screenHeight * 0.3 },
+                { x: screenWidth * 0.5, y: screenHeight * 0.2 },
+                { x: screenWidth * 0.8, y: screenHeight * 0.3 },
+                { x: screenWidth * 0.3, y: screenHeight * 0.6 },
+                { x: screenWidth * 0.7, y: screenHeight * 0.6 }
+            ];
+            
+            // 立即触发
+            positions.forEach((pos, index) => {
+                setTimeout(() => {
+                    createFirework(pos.x, pos.y, 60 + Math.random() * 20, 250 + Math.random() * 100);
+                }, index * 200);
+            });
+            
+            // 第二轮烟花，更加壮观
+            setTimeout(() => {
+                positions.forEach((pos, index) => {
+                    setTimeout(() => {
+                        createFirework(pos.x + (Math.random() - 0.5) * 200, 
+                                      pos.y + (Math.random() - 0.5) * 100, 
+                                      70 + Math.random() * 30, 300);
+                    }, index * 150);
+                });
+            }, 800);
         }
 
         // 拖拽支持
